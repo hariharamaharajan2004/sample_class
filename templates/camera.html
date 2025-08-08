@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Camera - AI Classification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-camera"></i> Live Camera Classification
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-video"></i> Camera Feed</h5>
+                <div>
+                    <button id="startBtn" class="btn btn-success btn-sm">
+                        <i class="fas fa-play"></i> Start
+                    </button>
+                    <button id="stopBtn" class="btn btn-danger btn-sm" disabled>
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                    <button id="captureBtn" class="btn btn-primary btn-sm" disabled>
+                        <i class="fas fa-camera"></i> Capture
+                    </button>
+                </div>
+            </div>
+            <div class="card-body text-center">
+                <video id="videoElement" width="640" height="480" style="display: none;"></video>
+                <canvas id="canvasElement" width="640" height="480" style="border: 1px solid #ddd;"></canvas>
+                <div id="cameraStatus" class="mt-2">
+                    <span class="badge bg-secondary">Camera not started</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Live Statistics -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Live Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 id="frameCount">0</h4>
+                        <small>Frames Processed</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 id="detectionCount">0</h4>
+                        <small>Objects Detected</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 id="classifiedCount">0</h4>
+                        <small>Classified</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 id="unknownCount">0</h4>
+                        <small>Unknown</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Detections -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history"></i> Recent Detections</h5>
+            </div>
+            <div class="card-body">
+                <div id="recentDetections" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-muted">No detections yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Panel -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cog"></i> Camera Settings</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="processInterval" class="form-label">Process Interval (ms):</label>
+                        <input type="range" class="form-range" id="processInterval" 
+                               min="100" max="2000" value="500">
+                        <small class="text-muted">Current: <span id="intervalValue">500</span>ms</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="confidenceThreshold" class="form-label">Confidence Threshold:</label>
+                        <input type="range" class="form-range" id="confidenceThreshold" 
+                               min="0.1" max="1.0" step="0.1" value="0.5">
+                        <small class="text-muted">Current: <span id="confidenceValue">0.5</span></small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoSave" checked>
+                            <label class="form-check-label" for="autoSave">
+                                Auto-save detections
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showAnnotations" checked>
+                            <label class="form-check-label" for="showAnnotations">
+                                Show annotations
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let video, canvas, ctx;
+let isStreaming = false;
+let processInterval = 500;
+let frameCount = 0;
+let detectionCount = 0;
+let classifiedCount = 0;
+let unknownCount = 0;
+let processingTimer;
+
+document.addEventListener('DOMContentLoaded', function() {
+    video = document.getElementById('videoElement');
+    canvas = document.getElementById('canvasElement');
+    ctx = canvas.getContext('2d');
+    
+    // Event listeners
+    document.getElementById('startBtn').addEventListener('click', startCamera);
+    document.getElementById('stopBtn').addEventListener('click', stopCamera);
+    document.getElementById('captureBtn').addEventListener('click', captureFrame);
+    
+    // Settings
+    document.getElementById('processInterval').addEventListener('input', function(e) {
+        processInterval = parseInt(e.target.value);
+        document.getElementById('intervalValue').textContent = processInterval;
+        if (isStreaming) {
+            restartProcessing();
+        }
+    });
+    
+    document.getElementById('confidenceThreshold').addEventListener('input', function(e) {
+        document.getElementById('confidenceValue').textContent = e.target.value;
+    });
+});
+
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 } 
+        });
+        
+        video.srcObject = stream;
+        video.play();
+        
+        video.addEventListener('loadedmetadata', function() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            isStreaming = true;
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('captureBtn').disabled = false;
+            document.getElementById('cameraStatus').innerHTML = 
+                '<span class="badge bg-success">Camera active</span>';
+            
+            startProcessing();
+        });
+        
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        alert('Error accessing camera: ' + error.message);
+    }
+}
+
+function stopCamera() {
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+    }
+    
+    isStreaming = false;
+    clearInterval(processingTimer);
+    
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('captureBtn').disabled = true;
+    document.getElementById('cameraStatus').innerHTML = 
+        '<span class="badge bg-secondary">Camera stopped</span>';
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function startProcessing() {
+    processingTimer = setInterval(processFrame, processInterval);
+}
+
+function restartProcessing() {
+    clearInterval(processingTimer);
+    if (isStreaming) {
+        startProcessing();
+    }
+}
+
+function processFrame() {
+    if (!isStreaming) return;
+    
+    // Draw current frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Get image data
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // Send to server for processing
+    fetch('/api/process_camera_frame', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            image_data: imageData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateStatistics(data.results);
+            
+            if (document.getElementById('showAnnotations').checked) {
+                // Display annotated image
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = data.annotated_image;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error processing frame:', error);
+    });
+    
+    frameCount++;
+    document.getElementById('frameCount').textContent = frameCount;
+}
+
+function captureFrame() {
+    if (!isStreaming) return;
+    
+    // Create a temporary canvas for capture
+    const captureCanvas = document.createElement('canvas');
+    captureCanvas.width = canvas.width;
+    captureCanvas.height = canvas.height;
+    const captureCtx = captureCanvas.getContext('2d');
+    
+    // Draw current frame
+    captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+    
+    // Download the image
+    const link = document.createElement('a');
+    link.download = `capture_${new Date().getTime()}.jpg`;
+    link.href = captureCanvas.toDataURL('image/jpeg');
+    link.click();
+}
+
+function updateStatistics(results) {
+    detectionCount += results.detections.length;
+    classifiedCount += results.classifications.length;
+    unknownCount += results.unknown_objects.length;
+    
+    document.getElementById('detectionCount').textContent = detectionCount;
+    document.getElementById('classifiedCount').textContent = classifiedCount;
+    document.getElementById('unknownCount').textContent = unknownCount;
+    
+    // Update recent detections
+    updateRecentDetections(results);
+}
+
+function updateRecentDetections(results) {
+    const recentDetections = document.getElementById('recentDetections');
+    
+    // Add new detections
+    let html = '';
+    
+    results.classifications.forEach(classification => {
+        html += `<div class="alert alert-success alert-sm mb-1">
+            <small><strong>${classification.class_name}</strong> 
+            (${(classification.confidence * 100).toFixed(1)}%)</small>
+        </div>`;
+    });
+    
+    results.unknown_objects.forEach(unknown => {
+        html += `<div class="alert alert-warning alert-sm mb-1">
+            <small><strong>Unknown Object</strong> 
+            (${(unknown.confidence * 100).toFixed(1)}%)</small>
+        </div>`;
+    });
+    
+    if (html) {
+        recentDetections.innerHTML = html + recentDetections.innerHTML;
+        
+        // Keep only last 10 detections
+        const alerts = recentDetections.querySelectorAll('.alert');
+        if (alerts.length > 10) {
+            for (let i = 10; i < alerts.length; i++) {
+                alerts[i].remove();
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

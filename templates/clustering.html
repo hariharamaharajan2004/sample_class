@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}Clustering - AI Classification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-project-diagram"></i> Class Discovery & Clustering
+        </h1>
+    </div>
+</div>
+
+<!-- Status Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Unknown Objects Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h3 class="text-primary">{{ unknown_count }}</h3>
+                        <p class="mb-0">Unknown objects in buffer</p>
+                        {% if unknown_count >= 3 %}
+                            <small class="text-success">
+                                <i class="fas fa-check"></i> Ready for clustering
+                            </small>
+                        {% else %}
+                            <small class="text-warning">
+                                <i class="fas fa-exclamation-triangle"></i> Need at least 3 objects for clustering
+                            </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="discoverClasses('kmeans')" 
+                                    {% if unknown_count < 3 %}disabled{% endif %}>
+                                <i class="fas fa-search"></i> Discover Classes (K-Means)
+                            </button>
+                            <button class="btn btn-secondary" onclick="discoverClasses('dbscan')" 
+                                    {% if unknown_count < 3 %}disabled{% endif %}>
+                                <i class="fas fa-search"></i> Discover Classes (DBSCAN)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clustering Results -->
+<div class="row" id="clusteringResults" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-scatter"></i> Clustering Results</h5>
+            </div>
+            <div class="card-body">
+                <div id="clusteringContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Discovered Clusters -->
+<div class="row mt-4" id="discoveredClusters" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-layer-group"></i> Discovered Clusters</h5>
+            </div>
+            <div class="card-body">
+                <div id="clustersContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-question-circle"></i> How It Works</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-1"></i> Automatic Discovery</h6>
+                        <p>The system automatically collects unknown objects that don't match existing classes. When enough objects are collected, clustering algorithms can group similar objects together.</p>
+                        
+                        <h6><i class="fas fa-2"></i> Clustering Methods</h6>
+                        <ul>
+                            <li><strong>K-Means:</strong> Groups objects into a predetermined number of clusters</li>
+                            <li><strong>DBSCAN:</strong> Automatically determines the number of clusters based on density</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-3"></i> Human-in-the-Loop</h6>
+                        <p>After clustering, you can review the discovered groups and decide which ones should become new classes. You can also provide meaningful names and descriptions.</p>
+                        
+                        <h6><i class="fas fa-4"></i> Incremental Learning</h6>
+                        <p>Once new classes are created, the system will use them to classify future objects, continuously improving its knowledge base.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Class Modal -->
+<div class="modal fade" id="createClassModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Class from Cluster</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createClassForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clusterClassName" class="form-label">Class Name:</label>
+                                <input type="text" class="form-control" id="clusterClassName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="clusterClassDescription" class="form-label">Description:</label>
+                                <textarea class="form-control" id="clusterClassDescription" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Cluster Information:</label>
+                                <div id="clusterInfo" class="alert alert-info"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sample Images:</label>
+                            <div id="sampleImages" class="row"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Class</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentClusteringResults = null;
+let selectedClusterId = null;
+
+function discoverClasses(method) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    
+    fetch('/api/discover_classes', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            method: method
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayClusteringResults(data);
+        currentClusteringResults = data;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error discovering classes: ' + error.message);
+    })
+    .finally(() => {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+}
+
+function displayClusteringResults(data) {
+    const resultsDiv = document.getElementById('clusteringResults');
+    const contentDiv = document.getElementById('clusteringContent');
+    
+    if (data.status === 'success') {
+        let html = `
+            <div class="alert alert-success">
+                <h6><i class="fas fa-check"></i> Clustering Completed Successfully</h6>
+                <p><strong>Method:</strong> ${data.method.toUpperCase()}</p>
+                <p><strong>Objects Processed:</strong> ${data.total_objects}</p>
+                <p><strong>Objects Clustered:</strong> ${data.clustered_objects}</p>
+                <p><strong>Clusters Found:</strong> ${Object.keys(data.cluster_analysis).length}</p>
+            </div>
+        `;
+        
+        if (data.clustering_info.silhouette_score) {
+            html += `
+                <div class="alert alert-info">
+                    <strong>Silhouette Score:</strong> ${data.clustering_info.silhouette_score.toFixed(3)}
+                    <small class="text-muted">(Higher is better, range: -1 to 1)</small>
+                </div>
+            `;
+        }
+        
+        contentDiv.innerHTML = html;
+        resultsDiv.style.display = 'block';
+        
+        // Display clusters
+        displayClusters(data);
+        
+    } else if (data.status === 'insufficient_data') {
+        contentDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-exclamation-triangle"></i> Insufficient Data</h6>
+                <p>Only ${data.count} unknown objects available. Need at least 3 objects for clustering.</p>
+            </div>
+        `;
+        resultsDiv.style.display = 'block';
+        
+    } else {
+        contentDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-times"></i> Clustering Failed</h6>
+                <p>${data.message || 'Unknown error occurred'}</p>
+            </div>
+        `;
+        resultsDiv.style.display = 'block';
+    }
+}
+
+function displayClusters(data) {
+    const clustersDiv = document.getElementById('discoveredClusters');
+    const contentDiv = document.getElementById('clustersContent');
+    
+    if (!data.cluster_analysis || Object.keys(data.cluster_analysis).length === 0) {
+        contentDiv.innerHTML = '<p class="text-muted">No clusters discovered.</p>';
+        clustersDiv.style.display = 'block';
+        return;
+    }
+    
+    let html = '<div class="row">';
+    
+    Object.entries(data.cluster_analysis).forEach(([clusterId, clusterInfo]) => {
+        const suggestedName = data.suggested_names[clusterId] || `Cluster ${clusterId}`;
+        const representatives = data.representatives[clusterId] || {};
+        
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Cluster ${clusterId}</h6>
+                        <span class="badge bg-primary">${clusterInfo.size} objects</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Suggested Name:</strong> ${suggestedName}</p>
+                        <p><strong>Cohesion:</strong> ${clusterInfo.mean_distance_to_centroid.toFixed(3)}</p>
+                        
+                        <!-- Sample Images -->
+                        <div class="mb-2">
+                            <small class="text-muted">Sample Images:</small>
+                            <div class="row">
+        `;
+        
+        if (representatives.sample_images && representatives.sample_images.length > 0) {
+            representatives.sample_images.slice(0, 3).forEach(imagePath => {
+                html += `
+                    <div class="col-4">
+                        <img src="${imagePath}" class="img-fluid img-thumbnail" 
+                             style="height: 60px; object-fit: cover;">
+                    </div>
+                `;
+            });
+        } else {
+            html += '<div class="col-12"><small class="text-muted">No sample images available</small></div>';
+        }
+        
+        html += `
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-success btn-sm w-100" 
+                                onclick="openCreateClassModal(${clusterId}, '${suggestedName}', ${JSON.stringify(clusterInfo).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-plus"></i> Create Class
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    contentDiv.innerHTML = html;
+    clustersDiv.style.display = 'block';
+}
+
+function openCreateClassModal(clusterId, suggestedName, clusterInfo) {
+    selectedClusterId = clusterId;
+    
+    document.getElementById('clusterClassName').value = suggestedName;
+    document.getElementById('clusterClassDescription').value = '';
+    
+    // Display cluster information
+    document.getElementById('clusterInfo').innerHTML = `
+        <strong>Cluster ${clusterId}</strong><br>
+        Objects: ${clusterInfo.size}<br>
+        Cohesion: ${clusterInfo.mean_distance_to_centroid.toFixed(3)}
+    `;
+    
+    // Display sample images
+    const sampleImagesDiv = document.getElementById('sampleImages');
+    const representatives = currentClusteringResults.representatives[clusterId];
+    
+    if (representatives && representatives.sample_images) {
+        let imagesHtml = '';
+        representatives.sample_images.slice(0, 6).forEach(imagePath => {
+            imagesHtml += `
+                <div class="col-4 mb-2">
+                    <img src="${imagePath}" class="img-fluid img-thumbnail" 
+                         style="height: 80px; object-fit: cover;">
+                </div>
+            `;
+        });
+        sampleImagesDiv.innerHTML = imagesHtml;
+    } else {
+        sampleImagesDiv.innerHTML = '<div class="col-12"><small class="text-muted">No sample images available</small></div>';
+    }
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('createClassModal')).show();
+}
+
+document.getElementById('createClassForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const className = document.getElementById('clusterClassName').value;
+    const description = document.getElementById('clusterClassDescription').value;
+    
+    if (!selectedClusterId || !className) {
+        alert('Please provide a class name');
+        return;
+    }
+    
+    fetch('/api/create_class', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            cluster_id: selectedClusterId,
+            class_name: className,
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            bootstrap.Modal.getInstance(document.getElementById('createClassModal')).hide();
+            location.reload(); // Refresh to update unknown count
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating class');
+    });
+});
+</script>
+{% endblock %}

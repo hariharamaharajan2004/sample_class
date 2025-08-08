@@ -1,0 +1,51 @@
+INFO:src.core.object_detector:Loaded YOLO model yolov8n.pt on cpu
+INFO:src.core.feature_extractor:Initialized mobilenet_v3_small feature extractor on cpu
+INFO:src.database.db_manager:Database initialized at data/classification_system.db
+INFO:src.core.classification_engine:Classification engine initialized
+INFO:__main__:Starting web interface on 0.0.0.0:12000
+INFO:src.ui.web_app:Starting web application on 0.0.0.0:12000
+ * Serving Flask app 'src.ui.web_app'
+ * Debug mode: off
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:12000
+ * Running on http://10.2.5.141:12000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:10.2.24.139 - - [08/Aug/2025 15:22:48] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:22:50] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:22:50] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:22:50] "GET /static/js/main.js HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:22:50] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.24.139 - - [08/Aug/2025 15:22:51] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:22:51] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:22:51] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:22:51] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:22] "GET /api/stats HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:22] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:23] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:23] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:53] "GET /api/stats HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:54] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:54] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:23:54] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:25] "GET /api/stats HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:26] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:26] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:26] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:24:57] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:24:57] "GET /static/js/main.js HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:24:57] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:57] "GET /api/stats HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:57] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:58] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.17.140 - - [08/Aug/2025 15:24:58] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:10.2.24.139 - - [08/Aug/2025 15:24:59] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:03] "GET /upload HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:03] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:03] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:08] "GET /clustering HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:08] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:08] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:14] "GET /classes HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:14] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [08/Aug/2025 15:25:14] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -

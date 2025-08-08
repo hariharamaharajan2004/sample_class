@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Classes - AI Classification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tags"></i> Object Classes
+        </h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list"></i> All Classes ({{ classes|length }})</h5>
+                <div>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addClassModal">
+                        <i class="fas fa-plus"></i> Add Class
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="refreshClasses()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if classes %}
+                    <div class="row">
+                        {% for class in classes %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">{{ class.name }}</h6>
+                                    <span class="badge bg-primary">{{ class.sample_count }} samples</span>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        {{ class.description or 'No description available' }}
+                                    </p>
+                                    <small class="text-muted">
+                                        Created: {{ class.created_at.split('T')[0] if class.created_at else 'Unknown' }}
+                                    </small>
+                                </div>
+                                <div class="card-footer">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="viewClassDetails({{ class.id }}, '{{ class.name }}')">
+                                        <i class="fas fa-eye"></i> View Details
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                            onclick="exportClass({{ class.id }})">
+                                        <i class="fas fa-download"></i> Export
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <h4>No Classes Yet</h4>
+                        <p class="text-muted">Start by uploading images or using the camera to create your first class.</p>
+                        <a href="{{ url_for('upload_image') }}" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload Images
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Class Statistics -->
+{% if classes %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Class Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="classDistributionChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Statistics</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Total Classes:</strong></td>
+                        <td>{{ classes|length }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total Samples:</strong></td>
+                        <td>{{ classes|sum(attribute='sample_count') }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Average Samples per Class:</strong></td>
+                        <td>{{ "%.1f"|format((classes|sum(attribute='sample_count')) / (classes|length) if classes|length > 0 else 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Largest Class:</strong></td>
+                        <td>
+                            {% set largest = classes|max(attribute='sample_count') if classes else None %}
+                            {{ largest.name if largest else 'N/A' }} ({{ largest.sample_count if largest else 0 }} samples)
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add Class Modal -->
+<div class="modal fade" id="addClassModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Class</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addClassForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newClassName" class="form-label">Class Name:</label>
+                        <input type="text" class="form-control" id="newClassName" name="class_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newClassDescription" class="form-label">Description:</label>
+                        <textarea class="form-control" id="newClassDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newClassImages" class="form-label">Sample Images:</label>
+                        <input type="file" class="form-control" id="newClassImages" name="files" 
+                               accept="image/*" multiple required>
+                        <div class="form-text">Select multiple sample images for this class</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Class</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Class Details Modal -->
+<div class="modal fade" id="classDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="classDetailsTitle">Class Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="classDetailsContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Initialize chart if classes exist
+{% if classes %}
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('classDistributionChart').getContext('2d');
+    
+    const classNames = [{% for class in classes %}'{{ class.name }}'{% if not loop.last %},{% endif %}{% endfor %}];
+    const sampleCounts = [{% for class in classes %}{{ class.sample_count }}{% if not loop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: classNames,
+            datasets: [{
+                label: 'Sample Count',
+                data: sampleCounts,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+{% endif %}
+
+// Add class form handler
+document.getElementById('addClassForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/api/add_manual_class', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating class');
+    });
+});
+
+function refreshClasses() {
+    location.reload();
+}
+
+function viewClassDetails(classId, className) {
+    document.getElementById('classDetailsTitle').textContent = `Class: ${className}`;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('classDetailsModal'));
+    modal.show();
+    
+    // Load class details (placeholder - would need API endpoint)
+    document.getElementById('classDetailsContent').innerHTML = `
+        <div class="alert alert-info">
+            <h6>Class Information</h6>
+            <p><strong>ID:</strong> ${classId}</p>
+            <p><strong>Name:</strong> ${className}</p>
+            <p>Detailed class information and sample images would be loaded here.</p>
+        </div>
+    `;
+}
+
+function exportClass(classId) {
+    // Placeholder for export functionality
+    alert(`Export functionality for class ${classId} would be implemented here.`);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Classification System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> System Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.total_processed }}</h4>
+                        <p class="mb-0">Objects Processed</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-eye fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.classified_objects }}</h4>
+                        <p class="mb-0">Classified Objects</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.num_unknown_objects }}</h4>
+                        <p class="mb-0">Unknown Objects</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-question-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.num_classes }}</h4>
+                        <p class="mb-0">Known Classes</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-tags fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('upload_image') }}" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-upload"></i><br>
+                            Upload Image
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('camera_page') }}" class="btn btn-success btn-lg w-100 mb-2">
+                            <i class="fas fa-camera"></i><br>
+                            Live Camera
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('clustering_page') }}" class="btn btn-warning btn-lg w-100 mb-2">
+                            <i class="fas fa-project-diagram"></i><br>
+                            Discover Classes
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-info btn-lg w-100 mb-2" onclick="refreshStats()">
+                            <i class="fas fa-sync-alt"></i><br>
+                            Refresh Stats
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Configuration -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cog"></i> System Configuration</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Similarity Threshold:</strong></td>
+                        <td>{{ "%.2f"|format(stats.similarity_threshold) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Unknown Buffer Size:</strong></td>
+                        <td>{{ stats.unknown_buffer_size }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total Embeddings:</strong></td>
+                        <td>{{ stats.num_embeddings }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>New Classes Discovered:</strong></td>
+                        <td>{{ stats.new_classes_discovered }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Recent Classes</h5>
+            </div>
+            <div class="card-body">
+                {% if classes %}
+                    <div class="list-group">
+                        {% for class in classes[:5] %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ class.name }}</strong>
+                                <br><small class="text-muted">{{ class.description or 'No description' }}</small>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">{{ class.sample_count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if classes|length > 5 %}
+                        <div class="text-center mt-2">
+                            <a href="{{ url_for('view_classes') }}" class="btn btn-sm btn-outline-primary">
+                                View All Classes
+                            </a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted">No classes created yet.</p>
+                    <a href="{{ url_for('upload_image') }}" class="btn btn-primary">
+                        Start by uploading an image
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-heartbeat"></i> System Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-robot fa-3x text-success mb-2"></i>
+                            <h6>Object Detection</h6>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-brain fa-3x text-success mb-2"></i>
+                            <h6>Feature Extraction</h6>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-database fa-3x text-success mb-2"></i>
+                            <h6>Database</h6>
+                            <span class="badge bg-success">Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshStats() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error refreshing stats:', error);
+            alert('Error refreshing statistics');
+        });
+}
+
+// Auto-refresh stats every 30 seconds
+setInterval(refreshStats, 30000);
+</script>
+{% endblock %}
