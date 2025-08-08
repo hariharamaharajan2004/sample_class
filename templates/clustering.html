@@ -289,8 +289,10 @@ function displayClusters(data) {
                         </div>
                     </div>
                     <div class="card-footer">
-                        <button class="btn btn-success btn-sm w-100" 
-                                onclick="openCreateClassModal(${clusterId}, '${suggestedName}', ${JSON.stringify(clusterInfo).replace(/"/g, '&quot;')})">
+                        <button class="btn btn-success btn-sm w-100 create-class-btn" 
+                                data-cluster-id="${clusterId}" 
+                                data-suggested-name="${suggestedName}" 
+                                data-cluster-info='${JSON.stringify(clusterInfo)}'>
                             <i class="fas fa-plus"></i> Create Class
                         </button>
                     </div>
@@ -302,6 +304,16 @@ function displayClusters(data) {
     html += '</div>';
     contentDiv.innerHTML = html;
     clustersDiv.style.display = 'block';
+    
+    // Add event listeners for create class buttons
+    document.querySelectorAll('.create-class-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const clusterId = this.getAttribute('data-cluster-id');
+            const suggestedName = this.getAttribute('data-suggested-name');
+            const clusterInfo = JSON.parse(this.getAttribute('data-cluster-info'));
+            openCreateClassModal(clusterId, suggestedName, clusterInfo);
+        });
+    });
 }
 
 function openCreateClassModal(clusterId, suggestedName, clusterInfo) {

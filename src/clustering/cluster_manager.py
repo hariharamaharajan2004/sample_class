@@ -242,7 +242,7 @@ class ClusterManager:
                 
                 cluster_info = {
                     'size': int(np.sum(cluster_mask)),
-                    'centroid': centroid,
+                    'centroid': centroid.tolist(),  # Convert numpy array to list
                     'mean_distance_to_centroid': float(np.mean(distances)),
                     'std_distance_to_centroid': float(np.std(distances)),
                     'max_distance_to_centroid': float(np.max(distances)),

@@ -28,6 +28,19 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
 # Initialize classification engine
 classification_engine = ClassificationEngine()
 
+def convert_numpy_to_list(obj):
+    """Recursively convert numpy arrays to lists"""
+    if hasattr(obj, 'tolist'):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_numpy_to_list(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_to_list(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_to_list(item) for item in obj)
+    else:
+        return obj
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and \
@@ -93,7 +106,7 @@ def upload_image():
                 'success': True,
                 'original_image': f"/static/uploads/{filename}",
                 'annotated_image': f"/static/uploads/annotated_{filename}",
-                'results': results
+                'results': convert_numpy_to_list(results)
             }
             
             return jsonify(response_data)
@@ -134,6 +147,10 @@ def discover_classes():
         method = request.json.get('method', 'kmeans')
         results = classification_engine.discover_new_classes(method)
         
+        # Convert numpy arrays to lists for JSON serialization
+        
+        results = convert_numpy_to_list(results)
+        
         # Get sample images for clusters
         if results['status'] == 'success':
             unknown_objects = classification_engine.db_manager.get_unknown_objects()
@@ -145,7 +162,9 @@ def discover_classes():
                     if idx < len(unknown_objects):
                         obj = unknown_objects[idx]
                         if obj['image_path'] and os.path.exists(obj['image_path']):
-                            sample_images.append(obj['image_path'])
+                            # Convert to web-accessible URL
+                            web_path = f"/{obj['image_path']}" if not obj['image_path'].startswith('/') else obj['image_path']
+                            sample_images.append(web_path)
                 
                 results['representatives'][cluster_id] = {
                     'indices': representative_indices,
